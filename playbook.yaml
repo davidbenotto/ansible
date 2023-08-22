@@ -1,4 +1,3 @@
-
 - hosts: all
   become: true
   pre_tasks:
@@ -16,6 +15,30 @@
       update_only: yes
       update_cache: yes
     when: ansible_distribution == "CentOS"
+
+- hosts: all
+  become: true
+  tasks:
+
+  - name: create ansible user
+    tags: always
+    user:
+      name: ansible
+      groups: root
+
+  - name: add ssh key for ansible user
+    tags: always
+    authorized_key:
+      user: ansible
+      key: "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAACAQChXAu13gRPbQWUQZh0tVe2u5n2a6Z7Ltwytey59xeKaw9K9pIlRaVHljwC5m4FCphsNePuUR0W96gbVcOvyNAR54D8Pxioe4Vjvb4zXUmyybS8SZ2FZM+SGKx/lGNUbKDGuvErBtv8YvWYnNv5oEnbIG9NBqzJbmkSj11fNnnCcq6rWsNiwtnAHypq2IIelgiLUhCLE0RZkTQ4gSxIOzZEkP68bA0dPqRhSiIvuvS0cRnL0BeZFVnM7eYFH9RsIWabifvvsLDb0XbTsC4pHyr3BvJMWIfZ5Gkn3LlxESm9ia0uUvVKQzAZlfPbBbayDnYKoWyMJW5/Jl6wszv4oYe3hNxa9+Rtq5Oq25NiL/622gEGkMmJCQ+kBdp+OAdlTM/fiaosR4fU/Rx2w5CFoPuela9oiHfk/BjWtEmwguA3gs/u7LUqB0wST4Y4FdcmH7w5r00x8k33pPPqsMljiRf34/LrwRriDlO3n0N3mpufHNzyx9vKRl1W6neC/uyLFN+v7xkpJkG6p7wJs3BLHIS8MAGSKB/eXHOkIrrCCoJHsjOTZf3gGNncevXOaJ0CEmDyenx1t+rhSzzOYftLKQPwJJeWcJ4bMXlwVZ76NxKjnqLNOFqg7mCOiU40oWAVnPF++h4bk8mj0dDGfy3lsMzIk7Rm9AuXZvO5cRGGgo5rFw== david-benotto-ansible"
+
+  - name: add sudoers file for ansible user
+    copy:
+      src: sudoers_ansible
+      dest: /etc/sudoers.d/ansible
+      owner: root
+      group: root
+      mode: 0440
 
 - hosts: web_servers
   become: true
@@ -37,6 +60,15 @@
       - httpd
       - php
     when: ansible_distribution == "CentOS"
+
+  - name: copy default html file to site
+    tags: apache, apache2, httpd
+    copy:
+      src: files/default_site.html
+      dest: /var/www/html/index.html
+      owner: root
+      groups: root
+      mode: 0644
 
   - name: start apache server
     tags: apache, httpd, centos
@@ -68,13 +100,21 @@
   become: true
   tasks:
 
-  - name: install mariadb server
+  - name: install mariadb server on Ubuntu
     tags: db, mariadb, ubuntu
     apt:
       name:
       - mariadb-server
       state: latest
     when: ansible_distribution == "Ubuntu"
+
+  - name: install mariadb server on CentOS
+    tags: db, mariadb, ubuntu
+    dnf:
+      name:
+      - mariadb
+      state: latest
+    when: ansible_distribution == "CentOS"
 
 - hosts: file_servers
   become: true
